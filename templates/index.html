@@ -3,129 +3,233 @@
 {% block content %}
 <style>
     #drop-area {
-        border: 2px dashed #ccc;
+        border: 2px dashed transparent;
         border-radius: 20px;
-        width: 100%;
-        margin: 20px auto;
-        padding: 40px;
+        background-color: #fbfbfd;
+        padding: 60px 20px;
         text-align: center;
-        background-color: #f8f9fa;
         cursor: pointer;
-        transition: 0.3s;
+        transition: all 0.3s ease;
     }
-    #drop-area.highlight { background-color: #e2e6ea; border-color: #0d6efd; }
-    #fileElem { display: none; }
-    #file-name { margin-top: 10px; font-weight: bold; color: #0d6efd; }
+    #drop-area:hover {
+        background-color: #f0f0f2;
+    }
+    #drop-area.highlight {
+        border-color: var(--accent);
+        background-color: rgba(0, 113, 227, 0.05);
+    }
+    #file-icon {
+        font-size: 48px;
+        color: var(--accent);
+        margin-bottom: 15px;
+        opacity: 0.8;
+    }
+    
+    .table-clean {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+    }
+    .table-clean tr {
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        transition: transform 0.2s;
+    }
+    .table-clean tr:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    .table-clean td {
+        padding: 20px;
+        border: none;
+    }
+    .table-clean td:first-child { border-radius: 16px 0 0 16px; }
+    .table-clean td:last-child { border-radius: 0 16px 16px 0; }
+
+    .timer-text { 
+        font-family: "SF Mono", "Menlo", "Courier New", monospace; 
+        font-weight: 600; 
+        color: var(--text-main);
+        background: #f5f5f7;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    
+    .btn-action {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid rgba(0, 113, 227, 0.3);
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 13px;
+    }
+    .btn-action:hover {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .expired-row {
+        opacity: 0.5;
+        pointer-events: none;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .status-deleted {
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 500;
+    }
 </style>
 
     {% if current_user.is_authenticated %}
-        <div class="card mb-4">
-            <div class="card-header">Загрузить файл</div>
-            <div class="card-body">
-                <form method="POST" enctype="multipart/form-data" id="uploadForm">
-                    
-                    <div id="drop-area">
-                        <p class="fs-5 text-secondary mb-0">Нажми или перетащи файл сюда</p>
-                        <input type="file" id="fileElem" name="file" onchange="handleFiles(this.files)">
-                        <div id="file-name"></div>
-                    </div>
+        <div class="apple-card">
+            <h2 class="text-center mb-4">Загрузка файла</h2>
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                
+                <div id="drop-area">
+                    <div id="file-icon">☁️</div>
+                    <p class="mb-0" style="color: var(--text-secondary);">Перетащите файл сюда</p>
+                    <div id="file-name" class="mt-2 text-primary fw-bold"></div>
+                    <input type="file" id="fileElem" name="file" onchange="handleFiles(this.files)" style="display:none">
+                </div>
 
-                    <div class="mb-3 mt-3">
-                        <label class="form-label">Срок хранения</label>
+                <div class="row mt-4 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label ms-1 text-muted small">Таймер удаления</label>
                         <select name="expiration" class="form-select">
-                            <option value="5_sec">5 Секунд (Тест)</option>
-                            <option value="10_sec">10 Секунд (Тест)</option>
+                            <option value="5_sec">5 Секунд</option>
+                            <option value="10_sec">10 Секунд</option>
                             <option value="1">1 Час</option>
                             <option value="24" selected>24 Часа</option>
-                            <option value="72">3 Дня</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
-                        Загрузить файл
-                    </button>
-                </form>
-            </div>
+                    <div class="col-md-4 mt-3 mt-md-0">
+                        <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
+                            Загрузить
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
 
-        <h3>Мои файлы</h3>
-        <div class="table-responsive">
-            <table class="table table-striped align-middle">
-                <thead>
-                    <tr>
-                        <th>Файл</th>
-                        <th>Действия</th>
-                        <th>Статус</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for file in files %}
-                    <tr>
-                        <td>{{ file.original_name }}</td>
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-secondary" onclick="copyLink('{{ url_for('download_file', unique_link=file.unique_link, _external=True) }}')">Copy</button>
-                                <a href="{{ url_for('download_file', unique_link=file.unique_link) }}" class="btn btn-outline-primary" target="_blank">Open</a>
-                            </div>
-                        </td>
-                        <td>
-                            {% if file.expiration_date %}
-                                <span class="badge bg-danger">Удалится: {{ file.expiration_date.strftime('%H:%M:%S') }}</span>
-                            {% else %}
-                                <a href="{{ url_for('start_timer', file_id=file.id) }}" class="btn btn-sm btn-warning">
-                                    ▶ Запустить таймер
-                                </a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        <h3 class="mb-4 ms-2">Ваши файлы</h3>
+        <table class="table-clean">
+            <tbody>
+                {% for file in files %}
+                <tr id="row-{{ file.id }}">
+                    <td class="fw-bold" style="width: 40%;">{{ file.original_name }}</td>
+                    
+                    <td class="action-cell text-center">
+                        {% if file.expiration_date and file.expiration_date < now_utc %}
+                            <span class="status-deleted">Удалено</span>
+                        {% else %}
+                            <button class="btn-action me-2" onclick="copyLink('{{ url_for('download_file', unique_link=file.unique_link, _external=True) }}')">Copy</button>
+                            <a href="{{ url_for('download_file', unique_link=file.unique_link) }}" class="btn-action" target="_blank">Open</a>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-end" style="width: 25%;">
+                        {% if file.expiration_date %}
+                            <span class="timer-text" 
+                                  data-expires="{{ file.expiration_date.strftime('%Y-%m-%dT%H:%M:%SZ') }}" 
+                                  data-id="{{ file.id }}">
+                                00:00:00
+                            </span>
+                        {% else %}
+                            <a href="{{ url_for('start_timer', file_id=file.id) }}" class="text-warning text-decoration-none fw-bold small">
+                                ▶ Старт
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% else %}
         <div class="text-center mt-5">
-            <h1>FileShare</h1>
-            <p>Простой и быстрый обмен файлами.</p>
-            <a href="{{ url_for('login') }}" class="btn btn-primary">Войти</a>
+            <h1 class="display-4 mb-3 fw-bold">FileShare</h1>
+            <p class="lead text-secondary mb-5">Безопасный обмен файлами с таймером самоуничтожения.</p>
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg px-5">Войти в систему</a>
         </div>
     {% endif %}
 
 <script>
     document.getElementById('uploadForm')?.addEventListener('submit', function() {
         var btn = document.getElementById('uploadBtn');
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Загрузка...';
+        btn.innerHTML = 'Загрузка...';
         btn.disabled = true;
     });
 
     let dropArea = document.getElementById('drop-area');
     let fileInput = document.getElementById('fileElem');
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
-        dropArea.addEventListener(e, preventDefaults, false);
-    });
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropArea.addEventListener(e, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        
+        ['dragenter', 'dragover'].forEach(() => {
+            dropArea.classList.add('highlight');
+            document.getElementById('file-icon').style.transform = 'scale(1.1)';
+        });
+        ['dragleave', 'drop'].forEach(() => {
+            dropArea.classList.remove('highlight');
+            document.getElementById('file-icon').style.transform = 'scale(1)';
+        });
 
-    ['dragenter', 'dragover'].forEach(() => dropArea.classList.add('highlight'));
-    ['dragleave', 'drop'].forEach(() => dropArea.classList.remove('highlight'));
-
-    dropArea.addEventListener('drop', handleDrop, false);
-    dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('drop', handleDrop, false);
+        dropArea.addEventListener('click', () => fileInput.click());
+    }
 
     function handleDrop(e) {
-        let dt = e.dataTransfer;
-        let files = dt.files;
-        fileInput.files = files;
-        handleFiles(files);
+        fileInput.files = e.dataTransfer.files;
+        handleFiles(e.dataTransfer.files);
     }
-
     function handleFiles(files) {
-        if (files.length > 0) {
-            document.getElementById('file-name').innerText = "✅ " + files[0].name;
-        }
+        if (files.length > 0) document.getElementById('file-name').innerText = files[0].name;
     }
-
     function copyLink(text) {
         navigator.clipboard.writeText(text);
-        alert("Ссылка скопирована!");
     }
+
+    function updateTimers() {
+        const timers = document.querySelectorAll('.timer-text');
+        const now = new Date().getTime();
+        
+        timers.forEach(timer => {
+            const expiresStr = timer.getAttribute('data-expires');
+            if (!expiresStr) return;
+
+            const expiresAt = new Date(expiresStr).getTime();
+            const distance = expiresAt - now;
+
+            if (distance < 0) {
+                timer.innerHTML = "00:00:00";
+                const rowId = timer.getAttribute('data-id');
+                const row = document.getElementById('row-' + rowId);
+                
+                if (row && !row.classList.contains('expired-row')) {
+                    row.classList.add('expired-row');
+                    const actionCell = row.querySelector('.action-cell');
+                    actionCell.innerHTML = '<span class="status-deleted">Удалено</span>';
+                    timer.style.opacity = '0'; 
+                }
+            } else {
+                const hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
+                const minutes = Math.floor((distance / (1000 * 60)) % 60);
+                const seconds = Math.floor((distance / 1000) % 60);
+                
+                timer.innerHTML = 
+                    (hours < 10 ? "0" + hours : hours) + ":" + 
+                    (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+                    (seconds < 10 ? "0" + seconds : seconds);
+            }
+        });
+    }
+
+    setInterval(updateTimers, 100);
+    updateTimers();
 </script>
 {% endblock %}

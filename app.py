@@ -29,12 +29,10 @@ def index():
     if current_user.is_authenticated:
         if request.method == 'POST':
             if 'file' not in request.files:
-                flash('Ошибка: нет файла')
                 return redirect(request.url)
             
             file = request.files['file']
             if file.filename == '':
-                flash('Ошибка: файл не выбран')
                 return redirect(request.url)
 
             if file:
@@ -44,8 +42,7 @@ def index():
                 
                 try:
                     file.save(save_path)
-                except Exception as e:
-                    flash(f'Ошибка при сохранении: {e}')
+                except:
                     return redirect(request.url)
 
                 exp_input = request.form.get('expiration')
@@ -68,14 +65,12 @@ def index():
                 )
                 db.session.add(new_file)
                 db.session.commit()
-                
-                flash('Файл успешно загружен!')
                 return redirect(url_for('index'))
 
         user_files = FileEntry.query.filter_by(user_id=current_user.id).order_by(FileEntry.upload_date.desc()).all()
-        return render_template('index.html', files=user_files)
+        return render_template('index.html', files=user_files, now_utc=datetime.utcnow())
     
-    return render_template('index.html')
+    return render_template('index.html', now_utc=datetime.utcnow())
 
 @app.route('/start_timer/<int:file_id>')
 @login_required
@@ -107,7 +102,7 @@ def download_file(unique_link):
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('error.html', title="Файл не найден", message="Возможно, срок хранения истек."), 404
+    return render_template('error.html', title="Файл не найден", message="Срок хранения истек или ссылка неверна."), 404
 
 @app.errorhandler(413)
 def too_large_error(error):
@@ -120,7 +115,6 @@ def register():
         username = request.form['username']
         password = request.form['password']
         if User.query.filter_by(username=username).first():
-            flash('Такой пользователь уже есть')
             return redirect(url_for('register'))
         user = User(username=username)
         user.set_password(password)
@@ -137,7 +131,6 @@ def login():
         if user and user.check_password(request.form['password']):
             login_user(user)
             return redirect(url_for('index'))
-        flash('Ошибка входа')
     return render_template('login.html')
 
 @app.route('/logout')

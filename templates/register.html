@@ -1,16 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Регистрация</h2>
-<form method="POST">
-    <div class="mb-3">
-        <label>Имя пользователя</label>
-        <input type="text" name="username" class="form-control" required>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="apple-card text-center">
+            <h3 class="mb-4">Регистрация</h3>
+            <form method="POST">
+                <div class="mb-3 text-start">
+                    <input type="text" name="username" class="form-control" placeholder="Придумайте имя" required>
+                </div>
+                <div class="mb-4 text-start">
+                    <input type="password" name="password" class="form-control" placeholder="Придумайте пароль" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Создать аккаунт</button>
+            </form>
+            <div class="mt-4 pt-3 border-top">
+                <small class="text-secondary">Есть аккаунт? <a href="{{ url_for('login') }}" style="color: var(--accent); text-decoration: none;">Войти</a></small>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <label>Пароль</label>
-        <input type="password" name="password" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
-</form>
+</div>
 {% endblock %}
