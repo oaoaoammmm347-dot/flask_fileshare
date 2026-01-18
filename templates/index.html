@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if current_user.is_authenticated %}
+        <div class="card mb-4">
+            <div class="card-header">Загрузить файл</div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Срок хранения</label>
+                        <select name="expiration" class="form-select">
+                            <option value="1">1 Час</option>
+                            <option value="24">24 Часа</option>
+                            <option value="72">3 Дня</option>
+                            <option value="168">7 Дней</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Загрузить</button>
+                </form>
+            </div>
+        </div>
+
+        <h3>Мои файлы</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Имя файла</th>
+                    <th>Ссылка</th>
+                    <th>Удаление через</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                <tr>
+                    <td>{{ file.original_name }}</td>
+                    <td>
+                        <a href="{{ url_for('download_file', unique_link=file.unique_link) }}" target="_blank">
+                            Скачать
+                        </a>
+                    </td>
+                    <td>{{ file.expiration_date.strftime('%d.%m.%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="text-center mt-5">
+            <h1>FileShare</h1>
+            <p class="lead">Войдите, чтобы загружать файлы.</p>
+            <a href="{{ url_for('login') }}" class="btn btn-lg btn-primary">Войти</a>
+        </div>
+    {% endif %}
+{% endblock %}
