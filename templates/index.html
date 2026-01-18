@@ -1,19 +1,54 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+    /* Стили для зоны Drag-n-Drop */
+    #drop-area {
+        border: 2px dashed #ccc;
+        border-radius: 20px;
+        width: 100%;
+        font-family: sans-serif;
+        margin: 20px auto;
+        padding: 50px;
+        text-align: center;
+        background-color: #f9f9f9;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    #drop-area.highlight {
+        border-color: #0d6efd;
+        background-color: #e9ecef;
+    }
+    #fileElem {
+        display: none;
+    }
+    #file-name {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+</style>
+
     {% if current_user.is_authenticated %}
         <div class="card mb-4">
             <div class="card-header">Загрузить файл</div>
             <div class="card-body">
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <input type="file" name="file" class="form-control" required>
+                    
+                    <div id="drop-area">
+                        <p class="fs-5 text-secondary">Перетащите файл сюда или нажмите для выбора</p>
+                        <input type="file" id="fileElem" name="file" onchange="handleFiles(this.files)">
+                        <div id="file-name"></div>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">Срок хранения</label>
                         <select name="expiration" class="form-select">
+                            <option value="5_sec">5 Секунд</option>
+                            <option value="10_sec">10 Секунд</option>
                             <option value="1">1 Час</option>
-                            <option value="24">24 Часа</option>
+                            <option value="24" selected>24 Часа</option>
                             <option value="72">3 Дня</option>
                             <option value="168">7 Дней</option>
                         </select>
@@ -24,12 +59,12 @@
         </div>
 
         <h3>Мои файлы</h3>
-        <table class="table table-striped">
+        <table class="table table-striped align-middle">
             <thead>
                 <tr>
                     <th>Имя файла</th>
                     <th>Ссылка</th>
-                    <th>Удаление через</th>
+                    <th>Статус / Таймер</th>
                 </tr>
             </thead>
             <tbody>
@@ -37,11 +72,21 @@
                 <tr>
                     <td>{{ file.original_name }}</td>
                     <td>
-                        <a href="{{ url_for('download_file', unique_link=file.unique_link) }}" target="_blank">
-                            Скачать
-                        </a>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" value="{{ url_for('download_file', unique_link=file.unique_link, _external=True) }}" id="link-{{ file.id }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyLink('link-{{ file.id }}')">Копировать</button>
+                            <a href="{{ url_for('download_file', unique_link=file.unique_link) }}" class="btn btn-outline-primary" target="_blank">Открыть</a>
+                        </div>
                     </td>
-                    <td>{{ file.expiration_date.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        {% if file.expiration_date %}
+                            <span class="text-danger">Удалится: {{ file.expiration_date.strftime('%H:%M:%S') }}</span>
+                        {% else %}
+                            <a href="{{ url_for('start_timer', file_id=file.id) }}" class="btn btn-sm btn-warning">
+                                Запустить таймер
+                            </a>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -53,4 +98,60 @@
             <a href="{{ url_for('login') }}" class="btn btn-lg btn-primary">Войти</a>
         </div>
     {% endif %}
+
+<script>
+    function copyLink(elementId) {
+        var copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        alert("Ссылка скопирована!");
+    }
+
+    let dropArea = document.getElementById('drop-area');
+    let fileInput = document.getElementById('fileElem');
+    let fileNameDisplay = document.getElementById('file-name');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false)
+    });
+
+    function preventDefaults (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false)
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false)
+    });
+
+    function highlight(e) {
+        dropArea.classList.add('highlight');
+    }
+    function unhighlight(e) {
+        dropArea.classList.remove('highlight');
+    }
+
+    dropArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        let dt = e.dataTransfer;
+        let files = dt.files;
+        fileInput.files = files; 
+        handleFiles(files);
+    }
+
+    function handleFiles(files) {
+        if (files.length > 0) {
+            fileNameDisplay.innerText = "Выбран файл: " + files[0].name;
+        }
+    }
+</script>
 {% endblock %}

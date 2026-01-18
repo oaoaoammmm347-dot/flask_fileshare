@@ -22,6 +22,7 @@ class FileEntry(db.Model):
     filename = db.Column(db.String(300), nullable=False)
     original_name = db.Column(db.String(300), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
-    expiration_date = db.Column(db.DateTime, nullable=False)
+    expiration_date = db.Column(db.DateTime, nullable=True) 
+    duration_seconds = db.Column(db.Integer, nullable=False)
     unique_link = db.Column(db.String(100), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

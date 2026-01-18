@@ -6,6 +6,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, User, FileEntry
+
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -42,28 +43,64 @@ def index():
                 save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
                 file.save(save_path)
 
-                hours = int(request.form.get('expiration', 24))
-                exp_date = datetime.utcnow() + timedelta(hours=hours)
+                exp_input = request.form.get('expiration')
+                
+                if exp_input == '5_sec':
+                    seconds = 5
+                elif exp_input == '10_sec':
+                    seconds = 10
+                else:
+                    seconds = int(exp_input) * 3600 
                 
                 link_id = str(uuid.uuid4())[:8]
 
                 new_file = FileEntry(
                     filename=unique_name,
                     original_name=filename,
-                    expiration_date=exp_date,
+                    expiration_date=None,
+                    duration_seconds=seconds,
                     unique_link=link_id,
                     author=current_user
                 )
                 db.session.add(new_file)
                 db.session.commit()
                 
-                flash('Файл загружен!')
+                flash('Файл загружен! Запустите таймер, когда нужно.')
                 return redirect(url_for('index'))
 
         user_files = FileEntry.query.filter_by(user_id=current_user.id).order_by(FileEntry.upload_date.desc()).all()
         return render_template('index.html', files=user_files)
     
     return render_template('index.html')
+
+@app.route('/start_timer/<int:file_id>')
+@login_required
+def start_timer(file_id):
+    file = FileEntry.query.get_or_404(file_id)
+    
+    if file.author != current_user:
+        return redirect(url_for('index'))
+    
+    if file.expiration_date is None:
+        file.expiration_date = datetime.utcnow() + timedelta(seconds=file.duration_seconds)
+        db.session.commit()
+    
+    return redirect(url_for('index'))
+
+@app.route('/f/<unique_link>')
+def download_file(unique_link):
+    file_entry = FileEntry.query.filter_by(unique_link=unique_link).first_or_404()
+
+    if file_entry.expiration_date and datetime.utcnow() > file_entry.expiration_date:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_entry.filename))
+        except:
+            pass 
+        db.session.delete(file_entry)
+        db.session.commit()
+        return abort(404) 
+
+    return send_from_directory(app.config['UPLOAD_FOLDER'], file_entry.filename, as_attachment=True, download_name=file_entry.original_name)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -105,21 +142,6 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('index'))
-
-@app.route('/f/<unique_link>')
-def download_file(unique_link):
-    file_entry = FileEntry.query.filter_by(unique_link=unique_link).first_or_404()
-
-    if datetime.utcnow() > file_entry.expiration_date:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file_entry.filename))
-        except:
-            pass
-        db.session.delete(file_entry)
-        db.session.commit()
-        return abort(404)
-
-    return send_from_directory(app.config['UPLOAD_FOLDER'], file_entry.filename, as_attachment=True, download_name=file_entry.original_name)
 
 if __name__ == '__main__':
     app.run(debug=True)
