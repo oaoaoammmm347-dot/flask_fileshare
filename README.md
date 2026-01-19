@@ -20,7 +20,7 @@
 
 ## Установка и запуск
 1. Клонировать репозиторий:
-   `git clone https://github.com/твой-ник/flask_fileshare.git`
+   `git clone https://github.com/oaoaoammmm347-dot/flask_fileshare.git`
 2. Создать виртуальное окружение:
    `python -m venv venv`
 3. Установить зависимости:
